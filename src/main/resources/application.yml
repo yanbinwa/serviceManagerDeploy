@@ -1,0 +1,3 @@
+tomcatPort : 8151
+
+endpoints.shutdown.enabled : true
