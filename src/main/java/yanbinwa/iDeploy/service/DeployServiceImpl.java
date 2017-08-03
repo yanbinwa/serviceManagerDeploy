@@ -386,6 +386,7 @@ public class DeployServiceImpl implements DeployService
     {
         if (delServiceList == null || delServiceList.isEmpty())
         {
+            logger.error("delServiceList is null or empty");
             return;
         }
         StringBuilder serviceNameListStr = new StringBuilder();
@@ -407,8 +408,9 @@ public class DeployServiceImpl implements DeployService
         RemoteShellExecutor executor = new RemoteShellExecutor(deployServiceIp, deployServiceUsername, deployServicePassword);
         try
         {
-            executor.exec(cmd);
-            logger.info("Remove service successful " + delServiceList);
+            logger.info("removeServices cmd is " + cmd);
+            SshResult ret = executor.exec(cmd);
+            logger.info("Remove service successful " + delServiceList + "; Reture is: " + ret);
         } 
         catch (Exception e)
         {
