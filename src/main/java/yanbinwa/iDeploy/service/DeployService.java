@@ -2,6 +2,7 @@ package yanbinwa.iDeploy.service;
 
 import org.springframework.beans.factory.InitializingBean;
 
+import yanbinwa.common.exceptions.ServiceUnavailableException;
 import yanbinwa.common.iInterface.ConfigServiceIf;
 import yanbinwa.common.iInterface.ServiceLifeCycle;
 
@@ -25,4 +26,10 @@ public interface DeployService extends InitializingBean, ServiceLifeCycle, Confi
     public static final String MANIFEST_FILE_REMOTE_PATH = "/tmp/manifest.yml";
     
     public static final String CHECK_SERVICE_EXIST_CMD = "docker ps | grep ";
+    
+    String getServiceName() throws ServiceUnavailableException;
+    
+    void startManageService();
+
+    void stopManageService();
 }

@@ -24,6 +24,7 @@ import yanbinwa.common.configClient.ConfigClient;
 import yanbinwa.common.configClient.ConfigClientImpl;
 import yanbinwa.common.configClient.ServiceConfigState;
 import yanbinwa.common.constants.CommonConstants;
+import yanbinwa.common.exceptions.ServiceUnavailableException;
 import yanbinwa.common.http.HttpMethod;
 import yanbinwa.common.http.HttpResult;
 import yanbinwa.common.ssh.RemoteShellExecutor;
@@ -196,6 +197,34 @@ public class DeployServiceImpl implements DeployService
             deployTaskThread = null;
         }
         reset();
+    }
+    
+    @Override
+    public String getServiceName() throws ServiceUnavailableException
+    {
+        if(!isServiceReadyToWork())
+        {
+            throw new ServiceUnavailableException();
+        }
+        return serviceData.getServiceName();
+    }
+
+    @Override
+    public void startManageService()
+    {
+        if(!isServiceReadyToWork())
+        {
+            start();
+        }
+    }
+
+    @Override
+    public void stopManageService()
+    {
+        if(isServiceReadyToWork())
+        {
+            stop();
+        }
     }
     
     private void init()
@@ -392,9 +421,9 @@ public class DeployServiceImpl implements DeployService
         logger.info("start deployAddService ...");
         Map<String, Object> addServiceInfoDataMap = task.getAddServiceInfoDataMap();
         adjustAddService(addServiceInfoDataMap);
-        if (addServiceInfoDataMap == null || addServiceInfoDataMap.isEmpty())
+        if (!checkAddService(addServiceInfoDataMap))
         {
-            logger.info("addServiceInfoDataMap is null or empty");
+            logger.info("addServiceInfoDataMap is null or empty or does not contains device");
             return;
         }
         try
@@ -486,6 +515,43 @@ public class DeployServiceImpl implements DeployService
         }
     }
     
+    @SuppressWarnings("unchecked")
+    private boolean checkAddService(Map<String, Object> addServiceInfoDataMap)
+    {
+        if (addServiceInfoDataMap == null || addServiceInfoDataMap.isEmpty())
+        {
+            return false;
+        }
+        Map<String, Object> componentsMap = (Map<String, Object>) addServiceInfoDataMap.get(DEPLOY_COMPONENTS_KEY);
+        if (componentsMap == null)
+        {
+            logger.error("componentsMap is null");
+            return false;
+        }
+        for (Map.Entry<String, Object> entry : componentsMap.entrySet())
+        {
+            String serviceGroupName = entry.getKey();
+            Map<String, Object> serviceGroupInfoMap = (Map<String, Object>) entry.getValue();
+            if (serviceGroupInfoMap == null)
+            {
+                logger.error("serviceGroupInfoMap is null for serviceGourp " + serviceGroupName);
+                continue;
+            }
+            Map<String, Object> devicesInfoMap = (Map<String, Object>) serviceGroupInfoMap.get(DEPLOY_DEVICES_KEY);
+            if (devicesInfoMap == null)
+            {
+                logger.error("devicesInfoMap is null for serviceGourp " + serviceGroupName);
+                continue;
+            }
+            if (!devicesInfoMap.isEmpty())
+            {
+                //只要具有devices有数据，就是可以的
+                return true;
+            }
+        }
+        return false;
+    }
+    
     private boolean isServiceExist(String serviceName) throws Exception
     {
         String deployServiceIp = deployBaseInfoData.getDeployServerIp();
@@ -521,7 +587,7 @@ public class DeployServiceImpl implements DeployService
         }
         else
         {
-            logger.info("start to update the serviceConfigPropertiesObj " + serviceConfigPropertiesObj);
+            logger.debug("start to update the serviceConfigPropertiesObj " + serviceConfigPropertiesObj);
         }
         Map<String, Object> serviceConfigProperties = (Map<String, Object>) JsonUtil.JsonStrToMap(serviceConfigPropertiesObj.toString());
         
@@ -950,6 +1016,11 @@ public class DeployServiceImpl implements DeployService
             }
         }
         return featureNameToGroupNameMap;
+    }
+    
+    private boolean isServiceReadyToWork()
+    {
+        return isRunning && isConfiged;
     }
     
     class DeployConfigCallBack implements ConfigCallBack
